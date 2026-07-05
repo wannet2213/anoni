@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: #050505;
+    color: rgba(255,255,255,0.9);
+    font-feature-settings: "ss01", "ss02", "ss03", "cv01", "cv02";
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+}
+
+@layer components {
+  /* Double-Bezel card: outer shell + inner core */
+  .doppelrand { position: relative; }
+  .doppelrand > .shell {
+    border-radius: 2rem;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+  }
+  .doppelrand > .shell > .core {
+    border-radius: calc(2rem - 0.25rem);
+    padding: 1.5rem;
+    background: #111111;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.04);
+  }
+
+  /* Button-in-Button CTA */
+  .btn-emerald {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    background: #fff;
+    color: #000;
+    font-weight: 500;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .btn-emerald:hover { transform: scale(1.02); }
+  .btn-emerald:active { transform: scale(0.98); }
+  .btn-emerald:disabled { opacity: 0.4; transform: none; }
+  .btn-emerald .icon-pill {
+    width: 2rem; height: 2rem;
+    border-radius: 9999px;
+    background: rgba(0,0,0,0.05);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .btn-emerald:hover .icon-pill {
+    transform: translate(0.25rem, -1px) scale(1.05);
+  }
+
+  .btn-glass {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    background: rgba(255,255,255,0.03);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.8);
+    font-weight: 500;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    transition: all 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .btn-glass:hover {
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    transform: scale(1.02);
+  }
+  .btn-glass:active { transform: scale(0.98); }
+  .btn-glass .icon-pill {
+    width: 2rem; height: 2rem;
+    border-radius: 9999px;
+    background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .btn-glass:hover .icon-pill {
+    transform: translate(0.25rem, -1px) scale(1.05);
+  }
+
+  /* Eyebrow badge */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-weight: 500;
+    background: rgba(255,255,255,0.03);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.5);
+  }
+
+  /* Input field — glass aesthetic */
+  .input-glass {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 1rem;
+    background: rgba(255,255,255,0.03);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.9);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    outline: none;
+  }
+  .input-glass::placeholder { color: rgba(255,255,255,0.2); }
+  .input-glass:focus {
+    box-shadow: 0 0 0 1px rgba(129,140,248,0.4);
+    background: rgba(255,255,255,0.06);
+  }
+}
+
+/* Background orbs — fixed, GPU-only */
+.bg-orbs {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  will-change: transform;
+}
