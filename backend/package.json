@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "node src/index.js",
+    "test": "node --test",
     "migrate": "npx prisma migrate deploy",
     "generate": "npx prisma generate"
   },

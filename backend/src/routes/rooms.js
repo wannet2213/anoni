@@ -37,7 +37,10 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   const { name, password, slug: customSlug } = req.body;
-  if (!name) return res.status(400).json({ error: "Room name required" });
+  if (!name) return res.status(400).json({ error: "Nama room wajib diisi" });
+  if (password !== undefined && typeof password !== "string") {
+    return res.status(400).json({ error: "Kata sandi harus berupa teks" });
+  }
 
   const slug = customSlug || nanoid();
   const data = { name, slug, userId: req.userId };
@@ -52,9 +55,9 @@ router.post("/", async (req, res) => {
       },
     });
   } catch (err) {
-    if (err.code === "P2002") return res.status(409).json({ error: "Slug already taken" });
+    if (err.code === "P2002") return res.status(409).json({ error: "Slug sudah dipakai" });
     console.error(err);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Terjadi kesalahan di server" });
   }
 });
 
@@ -62,7 +65,7 @@ router.delete("/:id", async (req, res) => {
   const room = await prisma.room.findFirst({
     where: { id: req.params.id, userId: req.userId },
   });
-  if (!room) return res.status(404).json({ error: "Room not found" });
+  if (!room) return res.status(404).json({ error: "Room tidak ditemukan" });
 
   await prisma.room.delete({ where: { id: room.id } });
 

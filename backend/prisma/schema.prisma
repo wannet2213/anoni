@@ -8,14 +8,48 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  rooms     Room[]
-  createdAt DateTime @default(now()) @map("created_at")
+  id              String              @id @default(uuid())
+  email           String              @unique
+  username        String              @unique
+  // Saat enkripsi akun aktif, kolom ini menyimpan bcrypt dari authVerifier
+  // (turunan kata sandi yang dihitung di perangkat), bukan kata sandi itu sendiri.
+  password        String
+  verified        Boolean             @default(false)
+  tokenVersion    Int                 @default(0) @map("token_version")
+  // Parameter turunan kunci akun. Kosong berarti akun masih memakai jalur lama
+  // (kata sandi dikirim ke server) dan perlu diangkat sekali saat login berikutnya.
+  kdfSalt         String?             @map("kdf_salt")
+  kdfIterations   Int?                @map("kdf_iterations")
+  // bcrypt dari verifier kode pemulihan. Kode pemulihannya sendiri tidak disimpan.
+  recoveryHash    String?             @map("recovery_hash")
+  rooms           Room[]
+  tokens          VerificationToken[]
+  passwordTokens  PasswordResetToken[]
+  createdAt       DateTime            @default(now()) @map("created_at")
 
   @@map("users")
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("password_reset_tokens")
 }
 
 model Room {
@@ -26,9 +60,25 @@ model Room {
   userId         String    @map("user_id")
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages       Message[]
+  key            RoomKey?
   createdAt      DateTime  @default(now()) @map("created_at")
 
   @@map("rooms")
+}
+
+// Kunci ruang yang disimpan di server dalam bentuk terbungkus. Server tidak bisa
+// membukanya: bungkusan kata sandi butuh kunci turunan kata sandi akun, dan
+// bungkusan pemulihan butuh kode pemulihan. Keduanya hanya ada di perangkat pengguna.
+model RoomKey {
+  id              String   @id @default(uuid())
+  roomId          String   @unique @map("room_id")
+  room            Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  wrappedPassword String   @map("wrapped_password")
+  wrappedRecovery String   @map("wrapped_recovery")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("room_keys")
 }
 
 model Message {

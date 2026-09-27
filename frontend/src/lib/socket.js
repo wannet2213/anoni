@@ -14,7 +14,6 @@ export function SocketProvider({ children }) {
 
   useEffect(() => {
     const s = io({ transports: ["websocket", "polling"] });
-    ref.current = s;
     setSocket(s);
     return () => { s.disconnect(); };
   }, []);

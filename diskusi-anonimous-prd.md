@@ -45,7 +45,7 @@ Diskusi Anonimous adalah aplikasi web responsif yang memungkinkan profesional un
 | Item | Value |
 |------|-------|
 | Framework UI | Tailwind CSS + Headless UI |
-| Theme | Light mode (default), dark mode opsional (toggle) — **MVP hanya Light** |
+| Theme | Light mode (default), dark mode opsional (toggle) — **keduanya sudah tersedia** |
 | Color Palette | Primary: `#4F46E5` (Indigo), Secondary: `#E0E7FF`, Background: `#F9FAFB`, Text: `#111827` |
 | Typography | Inter (Sans-serif), fallback system-ui |
 
@@ -59,15 +59,28 @@ Diskusi Anonimous adalah aplikasi web responsif yang memungkinkan profesional un
 6. **Chat Real-time** — Kirim pesan teks, langsung muncul di semua peserta tanpa refresh, menggunakan Socket.IO.
 7. **Tanpa Log IP & Jejak Identitas** — Vercel/nginx dikonfigurasi tidak mencatat IP, backend tidak menyimpan IP di database atau log aplikasi.
 8. **Penghapusan Ruang** — Admin dapat menghapus ruang, semua pesan langsung terhapus (hard delete).
+9. **Enkripsi isi pesan (E2EE)** — **sudah tersedia.** Isi pesan dan nickname dienkripsi di browser
+   (AES-256-GCM) sebelum dikirim. Kunci ruang dibawa di fragmen tautan (`#k=`) dan juga disimpan di
+   akun dalam bentuk terbungkus, sehingga tidak bergantung pada tautan saja. Rincian, batas jaminan,
+   dan konsekuensinya ada di `README.md` bagian "Enkripsi pesan (E2EE)".
+10. **Enkripsi akun** — **sudah tersedia.** Kata sandi akun tidak lagi dikirim ke server; klien
+    menurunkannya (PBKDF2 600.000 iterasi) dan hanya mengirim verifier. Kode pemulihan dibagikan
+    sekali saat pendaftaran untuk memulihkan kunci ruang kalau kata sandi lupa.
 
 ### 5. Non-Goals / Out of Scope
 
 - Manajemen user/peserta (tidak ada daftar peserta, blockir, kick).
 - Upload file atau gambar.
 - Pesan suara/video.
-- Enkripsi end-to-end pesan (hanya TLS transport).
+- **Fitur server yang butuh membaca isi pesan**: pencarian pesan, moderasi otomatis, ekspor riwayat,
+  dan analitik isi. Ini konsekuensi langsung dari E2EE (isi pesan tidak bisa dibaca server), bukan
+  sekadar belum dikerjakan.
+- Pemulihan kunci enkripsi tanpa kata sandi akun **atau** kode pemulihan. Kode pemulihan adalah
+  jalan pemulihannya; kalau keduanya hilang, riwayat ruang hilang dan server tidak bisa
+  mengembalikannya. Apa pun yang bisa dipakai server untuk memulihkan, itu juga bisa dipakai untuk
+  membaca.
 - Mobile app native (hanya responsive web).
-- History pesan lintas sesi bagi peserta (peserta hanya melihat pesan sejak ia join).
+- Riwayat pesan lintas sesi bagi peserta di luar 50 pesan terakhir yang dikirim API.
 - Fitur polling, Q&A terstruktur.
 
 ### 6. User Roles & Permissions
@@ -189,7 +202,7 @@ Memberikan sarana diskusi rahasia instan tanpa jejak identitas sehingga setiap p
 | 1 | Edit Room | Ubah nama & password room |
 | 2 | Custom Nickname | Input nama sendiri saat join |
 | 3 | Load More Chat | Infinite scroll pesan terdahulu |
-| 4 | Dark Mode | Toggle dark/light |
+| 4 | Dark Mode | Toggle dark/light — **sudah diimplementasikan**, lihat README bagian "Arah desain & aksesibilitas" |
 
 #### Future (P2)
 | # | Fitur | Deskripsi |
