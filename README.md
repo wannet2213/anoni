@@ -252,18 +252,17 @@ cd frontend && npm install && npm run build
 systemctl enable --now postgresql anoni-backend anoni-frontend nginx
 ```
 
-Contoh unit systemd (tidak disertakan di repo, ada di host):
-
-```ini
-[Service]
-WorkingDirectory=/path/anoni/backend
-EnvironmentFile=/path/anoni/backend/.env
-ExecStart=/path/node/bin/node src/index.js   # backend, listen HOST/PORT
-```
+Unit systemd yang dipakai di server ini disertakan di `systemd/` (`anoni-backend.service` dan
+`anoni-frontend.service`). Sesuaikan `WorkingDirectory`, `EnvironmentFile`, dan path node sebelum
+dipakai di mesin lain.
 
 Frontend dijalankan dengan `next start -p 3000`. Nginx mem-proxy `/api/` dan `/socket.io/` ke
 `127.0.0.1:4000` serta `/` ke `127.0.0.1:3000`; konfigurasi aslinya ada di
-`nginx/nginx.native.conf`, sedangkan `nginx/nginx.conf` adalah varian untuk Docker Compose.
+`nginx/nginx.native.conf` (salinan dari `/etc/nginx/nginx.conf` di server ini).
+
+Aplikasi **wajib disajikan lewat HTTPS** (atau `localhost`). `crypto.subtle` tidak tersedia di
+konteks tidak aman, jadi membuka aplikasi lewat `http://` pada host sungguhan membuat enkripsi
+gagal — dan pengguna hanya melihat pesan "perangkat tidak mendukung enkripsi".
 
 ## Environment backend
 
@@ -272,7 +271,7 @@ Frontend dijalankan dengan `next start -p 3000`. Nginx mem-proxy `/api/` dan `/s
 | `DATABASE_URL` | ya | koneksi PostgreSQL |
 | `JWT_SECRET` | ya | kunci HS256 untuk token admin **dan** bukti akses room |
 | `PORT` | tidak | default `4000` |
-| `HOST` | tidak | default `127.0.0.1`; set `0.0.0.0` hanya bila backend diakses langsung (mis. Docker) |
+| `HOST` | tidak | default `127.0.0.1`; set `0.0.0.0` hanya bila backend diakses langsung tanpa Nginx |
 | `FRONTEND_URL` | tidak | origin untuk CORS (`http://localhost:3000` di dev) |
 | `RESEND_API_KEY` | ya untuk email | kunci Resend |
 | `RESEND_FROM` | tidak | alamat pengirim, mis. `Anoni <noreply@example.com>` |
@@ -281,14 +280,6 @@ Frontend dijalankan dengan `next start -p 3000`. Nginx mem-proxy `/api/` dan `/s
 Header `X-Anoni-Frontend-Origin` **tidak** diisi klien: Nginx menurunkannya dari `map $host` supaya
 tautan email selalu memakai domain tepercaya. Menambah domain baru = menambah satu baris di `map`
 tersebut lalu `nginx -t && systemctl reload nginx`.
-
-## Menjalankan dengan Docker Compose
-
-```bash
-docker compose up -d --build     # db, backend, frontend, nginx (nginx/nginx.conf)
-```
-
-Jalur ini tidak dipakai di server ini (semua layanan native).
 
 ## Tes
 
@@ -303,10 +294,11 @@ build produksi, lalu pemeriksaan kontras, target sentuh, dan state error di brow
 
 ```
 anoni/
-├── docker-compose.yml
+├── systemd/                 # unit layanan yang dipakai di server (salinan dari host)
+│   ├── anoni-backend.service
+│   └── anoni-frontend.service
 ├── nginx/
-│   ├── nginx.conf          # varian Docker Compose
-│   └── nginx.native.conf   # varian host (systemd + Nginx native)
+│   └── nginx.native.conf   # salinan /etc/nginx/nginx.conf (systemd + Nginx native)
 ├── backend/
 │   ├── prisma/
 │   │   ├── schema.prisma   # User, Room, Message, VerificationToken, PasswordResetToken

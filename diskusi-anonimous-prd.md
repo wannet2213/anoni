@@ -37,7 +37,7 @@ Diskusi Anonimous adalah aplikasi web responsif yang memungkinkan profesional un
 | ORM | Prisma | 5.x | Type-safe, mudah migrasi, mendukung PostgreSQL |
 | Authentication | JWT | - | Stateless, ringan, cocok untuk single page application |
 | Web Server/Proxy | Nginx | 1.24+ | Reverse proxy, SSL termination, basic rate limiting |
-| Containerization | Docker | 24+ | Lingkungan seragam, mudah deployment |
+| Containerization | Tidak dipakai | — | Docker pernah direncanakan, lalu dihapus: seluruh layanan berjalan native di server (systemd + Nginx + PostgreSQL) |
 | Monitoring | Prometheus + Grafana | - | Opsional untuk metrik server (P2) |
 
 ### 3. UI/UX Direction
@@ -224,7 +224,7 @@ Memberikan sarana diskusi rahasia instan tanpa jejak identitas sehingga setiap p
 - Jaringan internet stabil untuk real-time.
 - Admin bertanggung jawab atas konten diskusi, platform hanya sebagai penyedia.
 - Keamanan password room menggunakan bcrypt hash, bukan enkripsi tingkat militer.
-- Proyek akan di-deploy di VPS kecil (2GB RAM) menggunakan Docker Compose.
+- Proyek di-deploy di VPS (RAM 3,8 GB) secara **native**: PostgreSQL di host, backend & frontend lewat systemd, Nginx native sebagai proxy. Jalur Docker Compose pernah direncanakan, lalu dihapus (lihat README).
 
 ### 15. Test Plan
 
@@ -266,7 +266,7 @@ Express Server
 
 | Komponen | Tipe | Tanggung Jawab | Teknologi |
 |----------|------|----------------|-----------|
-| NGINX | Backend Infra | SSL termination, reverse proxy, disable IP log | Docker, nginx.conf |
+| NGINX | Backend Infra | SSL termination, reverse proxy, disable IP log | Nginx native, nginx/nginx.native.conf |
 | Express App | Backend | REST API, middleware auth, error handling | Express 4.x |
 | Socket.IO Server | Backend | Koneksi WebSocket, room management, broadcast, simpan pesan ke DB | socket.io, socket.io-redis (opsional) |
 | Prisma ORM | Backend | Migrasi, query database type-safe | Prisma 5.x |

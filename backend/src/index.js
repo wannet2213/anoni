@@ -25,9 +25,6 @@ app.use("/api/v1/keys", keysRoutes);
 app.use("/api/v1/rooms", publicRoutes);
 app.use("/api/v1/rooms", roomRoutes);
 
-// ponytail: serve Next.js static from backend in single-container mode
-// In docker-compose, nginx routes to backend which proxies to Next dev or serves built assets
-
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 // ponytail: last-resort boundary. Express 4 does not catch rejections from async handlers, and an
