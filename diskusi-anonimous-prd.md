@@ -33,7 +33,7 @@ Diskusi Anonimous adalah aplikasi web responsif yang memungkinkan profesional un
 | Frontend Framework | Next.js | 14+ (App Router) | React dengan SSR opsional, performa, developer experience baik |
 | Styling | Tailwind CSS | 3.4+ | Utility-first, cepat styling, mudah responsif |
 | Database | PostgreSQL | 16+ | Relasional kuat, transaksi, cocok untuk data permanen (admin, room) |
-| Cache & Pub/Sub | Redis | 7.x | Caching session ringan, adapter Socket.IO untuk skalabilitas, penyimpanan pesan opsional |
+| Cache & Pub/Sub | Tidak dipakai | — | Redis direncanakan untuk adapter Socket.IO multi-instance; belum diimplementasikan (server tunggal) |
 | ORM | Prisma | 5.x | Type-safe, mudah migrasi, mendukung PostgreSQL |
 | Authentication | JWT | - | Stateless, ringan, cocok untuk single page application |
 | Web Server/Proxy | Nginx | 1.24+ | Reverse proxy, SSL termination, basic rate limiting |
@@ -127,7 +127,7 @@ Diskusi Anonimous adalah aplikasi web responsif yang memungkinkan profesional un
 
 | Service | Type | Purpose | Auth Method | Critical? |
 |---------|------|---------|-------------|-----------|
-| Redis | Cache | Adapter Socket.IO untuk multi-instance, session singkat | Password opsional | Tidak (untuk single instance MVP bisa tanpa Redis, tapi digunakan untuk room socket broadcast skala) |
+| Redis | Cache | Rencana adapter Socket.IO untuk multi-instance — belum diimplementasikan | — | Tidak |
 | PostgreSQL | Database | Simpan admin, room, dan pesan | Kredensial DB | Ya |
 | Socket.IO Server | Self-hosted | Real-time messaging | (terintegrasi dengan Express) | Ya |
 | Nginx | Proxy | SSL, reverse proxy ke backend, disable IP logging | - | Ya |
@@ -214,7 +214,7 @@ Memberikan sarana diskusi rahasia instan tanpa jejak identitas sehingga setiap p
 ### 14. Constraints & Assumptions
 
 #### Constraints
-- Hanya ada satu server backend untuk MVP (skalabilitas dengan Redis adapter disiapkan tapi tidak wajib).
+- Hanya ada satu server backend (skalabilitas multi-instance lewat Redis belum diimplementasikan).
 - Jumlah peserta per room maksimal 100 (harus di-load test).
 - Tidak ada moderasi otomatis konten (tidak ada filter kata kasar).
 - Hanya web responsive, tidak ada mobile app.
@@ -245,7 +245,7 @@ Memberikan sarana diskusi rahasia instan tanpa jejak identitas sehingga setiap p
 ### 16. System Design
 
 #### Architecture Pattern
-Monolithic-backend (Express + Socket.IO), terintegrasi frontend Next.js. Menggunakan pendekatan server tunggal untuk kemudahan development MVPs. Komunikasi API menggunakan REST, real-time menggunakan WebSocket. Redis opsional sebagai adapter Socket.IO untuk multi-instance (tidak dipakai di MVP, tapi kode siap).
+Monolithic-backend (Express + Socket.IO), terintegrasi frontend Next.js. Menggunakan pendekatan server tunggal untuk kemudahan development MVPs. Komunikasi API menggunakan REST, real-time menggunakan WebSocket. Redis tidak dipakai: tidak ada dependensi maupun kode Redis di repositori, dan server berjalan tunggal.
 
 #### High-Level Diagram
 ```text
@@ -258,8 +258,7 @@ Express Server
     ├── Socket.IO (ws://...)
     │     └── Namespace: /
     │          └── Events: join_room, message, leave_room, room_deleted
-    ├── Prisma Client  -->  PostgreSQL (data permanen)
-    └── Redis Client (opsional, pub/sub adapter)
+    └── Prisma Client  -->  PostgreSQL (data permanen)
 ```
 
 ### 17. Component Breakdown
@@ -268,11 +267,10 @@ Express Server
 |----------|------|----------------|-----------|
 | NGINX | Backend Infra | SSL termination, reverse proxy, disable IP log | Nginx native, nginx/nginx.native.conf |
 | Express App | Backend | REST API, middleware auth, error handling | Express 4.x |
-| Socket.IO Server | Backend | Koneksi WebSocket, room management, broadcast, simpan pesan ke DB | socket.io, socket.io-redis (opsional) |
+| Socket.IO Server | Backend | Koneksi WebSocket, room management, broadcast, simpan pesan ke DB | socket.io |
 | Prisma ORM | Backend | Migrasi, query database type-safe | Prisma 5.x |
-| PostgreSQL | Database | Penyimpanan user, room, message | PostgreSQL 16 |
+| PostgreSQL | Database | Penyimpanan user, room, message | PostgreSQL 17 |
 | Next.js App | Frontend | UI interaktif, client-side routing, autentikasi via JWT, Socket.IO client | React, Next.js 14, Tailwind |
-| Redis (opsional) | Cache | Adapter untuk multi-instance WebSocket | Redis 7 |
 
 ### 18. Routing Strategy
 
