@@ -252,17 +252,149 @@ cd frontend && npm install && npm run build
 systemctl enable --now postgresql anoni-backend anoni-frontend nginx
 ```
 
-Unit systemd yang dipakai di server ini disertakan di `systemd/` (`anoni-backend.service` dan
-`anoni-frontend.service`). Sesuaikan `WorkingDirectory`, `EnvironmentFile`, dan path node sebelum
-dipakai di mesin lain.
+Berkas konfigurasi layanan **tidak** disertakan di repo — cukup dibuat di host. Konfigurasi yang
+benar-benar berjalan di server ini ada di `/etc/nginx/nginx.conf` serta
+`/etc/systemd/system/anoni-backend.service` dan `anoni-frontend.service`.
 
-Frontend dijalankan dengan `next start -p 3000`. Nginx mem-proxy `/api/` dan `/socket.io/` ke
-`127.0.0.1:4000` serta `/` ke `127.0.0.1:3000`; konfigurasi aslinya ada di
-`nginx/nginx.native.conf` (salinan dari `/etc/nginx/nginx.conf` di server ini).
+### Unit systemd
+
+`/etc/systemd/system/anoni-backend.service`:
+
+```ini
+[Unit]
+Description=Anoni Backend (Express + Socket.IO)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/anoni/backend
+EnvironmentFile=/opt/anoni/backend/.env
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=3
+User=anoni
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`/etc/systemd/system/anoni-frontend.service`:
+
+```ini
+[Unit]
+Description=Anoni Frontend (Next.js)
+After=network.target anoni-backend.service
+Wants=anoni-backend.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/anoni/frontend
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node node_modules/.bin/next start -p 3000
+Restart=always
+RestartSec=3
+User=anoni
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Sesuaikan `WorkingDirectory`, `EnvironmentFile`, `ExecStart`, dan `User` dengan host Anda. (Di
+server ini layanan berjalan sebagai `root` dengan `WorkingDirectory=/root/anoni`, dan path node-nya
+`/root/.hermes/node/bin/node`.) Setelah dibuat:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now anoni-backend anoni-frontend
+```
+
+### Konfigurasi Nginx
+
+Nginx jadi proxy tunggal: `/api/` dan `/socket.io/` ke `127.0.0.1:4000` (Express), sisanya ke
+`127.0.0.1:3000` (Next.js). Empat hal yang tidak boleh dihilangkan:
+
+1. **Tanpa log IP** — `log_format` tidak memuat `$remote_addr`, dan header `X-Forwarded-For` serta
+   `X-Real-IP` dikosongkan sebelum diteruskan ke backend.
+2. **`X-Anoni-Frontend-Origin` hanya boleh datang dari proxy** — diturunkan dari `map $host` berisi
+   allowlist domain, sehingga klien tidak bisa memalsukannya dan tautan email selalu memakai domain
+   tepercaya. Menambah domain = menambah satu baris di `map`, lalu `nginx -t && systemctl reload nginx`.
+3. **WebSocket** butuh header `Upgrade`/`Connection` dan `proxy_read_timeout` panjang; tanpa itu
+   koneksi real-time terputus sendiri.
+4. **HTTPS wajib** — lihat catatan di bawah contoh.
+
+```nginx
+worker_processes auto;
+pid /run/nginx.pid;
+
+events {
+    worker_connections 1024;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+
+    # Hanya host tepercaya yang boleh menentukan origin tautan email akun.
+    map $host $anoni_frontend_origin {
+        default "";
+        contoh.domain.id https://contoh.domain.id;
+    }
+
+    # Tanpa IP di log mana pun — syarat anonimitas.
+    log_format anon '$time_local "$request" $status $bytes_sent';
+    access_log /var/log/nginx/anon_access.log anon;
+
+    sendfile on;
+    tcp_nopush on;
+    keepalive_timeout 65;
+
+    limit_req_zone $binary_remote_addr zone=api:10m rate=30r/s;
+    limit_req_zone $binary_remote_addr zone=ws:10m rate=10r/s;
+
+    server {
+        listen 8080;                # TLS diterminasi proxy/tunnel di depannya
+        server_name _;
+
+        location /api/ {
+            limit_req zone=api burst=20 nodelay;
+            proxy_pass http://127.0.0.1:4000;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Anoni-Frontend-Origin $anoni_frontend_origin;
+            proxy_set_header X-Forwarded-For "";
+            proxy_set_header X-Real-IP "";
+        }
+
+        # WebSocket untuk pesan real-time
+        location /socket.io/ {
+            limit_req zone=ws burst=10 nodelay;
+            proxy_pass http://127.0.0.1:4000;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For "";
+            proxy_set_header X-Real-IP "";
+            proxy_read_timeout 86400;
+        }
+
+        # Frontend Next.js
+        location / {
+            proxy_pass http://127.0.0.1:3000;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For "";
+            proxy_set_header X-Real-IP "";
+        }
+    }
+}
+```
 
 Aplikasi **wajib disajikan lewat HTTPS** (atau `localhost`). `crypto.subtle` tidak tersedia di
 konteks tidak aman, jadi membuka aplikasi lewat `http://` pada host sungguhan membuat enkripsi
-gagal — dan pengguna hanya melihat pesan "perangkat tidak mendukung enkripsi".
+gagal — dan pengguna hanya melihat pesan "perangkat tidak mendukung enkripsi". Di server ini TLS
+diterminasi oleh tunnel Cloudflare, jadi Nginx lokal cukup melayani HTTP di port 8080.
 
 ## Environment backend
 
@@ -294,11 +426,6 @@ build produksi, lalu pemeriksaan kontras, target sentuh, dan state error di brow
 
 ```
 anoni/
-├── systemd/                 # unit layanan yang dipakai di server (salinan dari host)
-│   ├── anoni-backend.service
-│   └── anoni-frontend.service
-├── nginx/
-│   └── nginx.native.conf   # salinan /etc/nginx/nginx.conf (systemd + Nginx native)
 ├── backend/
 │   ├── prisma/
 │   │   ├── schema.prisma   # User, Room, Message, VerificationToken, PasswordResetToken
